@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>我的拼车日历 V4</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#fff5f8;color:#4a3940;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Arial,sans-serif}
+.app{max-width:1150px;margin:auto;padding:14px}.hero{background:linear-gradient(135deg,#f06f96,#ffc4d4);color:#fff;border-radius:27px;padding:20px;box-shadow:0 10px 28px #d989a744}
+.hero h1{margin:2px 0 4px;font-size:28px}.hero p{margin:0;font-size:13px}
+.bar{display:flex;justify-content:space-between;align-items:center;margin:18px 2px 12px}.month{font-size:25px;font-weight:800}.nav{display:flex;gap:7px}
+button{border:0;border-radius:13px;padding:10px 14px;background:#fff;color:#d55379;font-weight:700;cursor:pointer;box-shadow:0 3px 10px #c9879944}button:active{transform:scale(.97)}
+.pink{background:#e9658a;color:#fff}.red{background:#ffe4e7;color:#d64d57}.green{background:#e5f8e9;color:#4d9560}
+.calendar,.detail{background:#fff;border-radius:24px;padding:13px;box-shadow:0 7px 25px #d99aaa33}
+.week,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.week div{text-align:center;color:#9b6d7a;font-weight:800;padding:8px;font-size:13px}
+.day{min-height:120px;border:1px solid #f0dce3;border-radius:16px;background:#fffafb;padding:9px;cursor:pointer}.day:hover{background:#fff0f5}.day.today{border:2px solid #f06f96}.day.selected{box-shadow:0 0 0 3px #ffb0c5 inset}.blank{background:transparent;border:0;cursor:default}
+.date{font-weight:850}.status{display:inline-block;margin-top:9px;padding:5px 8px;border-radius:20px;font-size:11px;font-weight:800}.available{background:#e6f8ea;color:#4e9661}.booked{background:#ffe4ed;color:#d55278}.full,.off{background:#ffe2e4;color:#d34e56}.remain{font-size:11px;color:#5e9a70;margin-top:5px}.names{font-size:10px;color:#80646f;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.legend{padding:11px 2px 2px;font-size:12px;color:#7c626d}
+.detail{margin-top:15px}.detailtop{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.detail h2{margin:0;font-size:21px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:13px 0}.sum{background:#fff0f5;border-radius:15px;text-align:center;padding:11px}.sum b{display:block;color:#d8587b;font-size:22px}
+.notice{padding:11px;border-radius:14px;background:#fff6d9;color:#80682f;margin:10px 0}.tools{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.booking{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #f0dce3;border-radius:16px;padding:13px;margin:9px 0}.actions{display:flex;gap:6px;flex-wrap:wrap}.muted{font-size:12px;color:#806671;line-height:1.65}.empty{text-align:center;color:#aaa;padding:22px}
+.modal{display:none;position:fixed;inset:0;background:#0007;align-items:center;justify-content:center;padding:15px;z-index:50}.modal.show{display:flex}.box{width:min(470px,100%);background:#fff;border-radius:24px;padding:20px;box-shadow:0 20px 70px #0005}.box h2{margin:0 0 13px}.field{margin:10px 0}.field label{display:block;font-size:12px;color:#80636d;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:1px solid #ead5dd;border-radius:12px;background:#fff}.foot{display:flex;justify-content:flex-end;gap:7px;margin-top:16px}
+@media(max-width:680px){.app{padding:9px}.hero{padding:17px}.hero h1{font-size:23px}.month{font-size:21px}.calendar{padding:7px}.grid,.week{gap:4px}.day{min-height:90px;padding:6px}.week div{font-size:10px;padding:6px 1px}.status{font-size:9px;padding:4px 5px}.remain{font-size:9px}.names{font-size:9px}.booking{display:block}.actions{margin-top:9px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hero"><div>🚗 SG → JB · 固定 2 位，可额外预约 2 位</div><h1>我的拼车日历</h1></div>
+  <div class="bar">
+    <div class="month" id="monthTitle"></div>
+    <div class="nav"><button id="prev">‹</button><button id="today">今天</button><button id="next">›</button></div>
+  </div>
+  <div class="calendar">
+    <div class="week"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+    <div class="grid" id="calendarGrid"></div>
+    <div class="legend">🟢 还有 2 位　🟡 还有 1 位　🔴 满　🔴 OFF</div>
+  </div>
+  <div class="detail" id="detail"></div>
+</div>
+
+<div class="modal" id="modal">
+ <div class="box">
+  <h2 id="formTitle">新增预约</h2>
+  <div class="field"><label>顾客名字</label><input id="fName"></div>
+  <div class="field"><label>人数</label><input id="fPeople" type="number" min="1" max="2" value="1"></div>
+  <div class="field"><label>上车点</label><input id="fFrom" value="Kranji MRT"></div>
+  <div class="field"><label>下车点</label><input id="fTo"></div>
+  <div class="field"><label>费用（S$）</label><input id="fFee" type="number" step="0.01" value="12"></div>
+  <div class="field"><label>付款状态</label><select id="fPaid"><option value="unpaid">待付款</option><option value="paid">已付款</option></select></div>
+  <div class="field"><label>备注</label><input id="fNote"></div>
+  <div class="foot"><button id="cancel">取消</button><button class="pink" id="save">保存</button></div>
+ </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const STORE="MY_CARPOOL_V4";
+let state={fridayOff:true,overrides:{},bookings:{}};
+let view=new Date(2026,8,1);
+let selected=new Date(2026,8,28);
+let editingId=null;
+
+function load(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(STORE));
+    if(saved && saved.bookings && saved.overrides) state=saved;
+  }catch(e){}
+  if(!state.bookings["2026-09-28"]){
+    state.bookings["2026-09-28"]=[
+      {id:"demo-a",name:"Amy",people:1,from:"Kranji MRT",to:"Skudai",fee:12,paid:"paid",note:""},
+      {id:"demo-b",name:"May",people:1,from:"Kranji MRT",to:"Paradigm",fee:12,paid:"unpaid",note:""}
+    ];
+    state.bookings["2026-09-29"]=[
+      {id:"demo-c",name:"Lisa",people:1,from:"Kranji MRT",to:"JB CIQ",fee:12,paid:"paid",note:""}
+    ];
+    save();
+  }
+}
+function save(){localStorage.setItem(STORE,JSON.stringify(state));}
+function k(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function bookings(dateKey){return state.bookings[dateKey]||[];}
+function people(list){return list.reduce((n,x)=>n+Number(x.people||0),0);}
+function isOff(d){
+  const key=k(d);
+  if(Object.prototype.hasOwnProperty.call(state.overrides,key)) return state.overrides[key];
+  return state.fridayOff && d.getDay()===5;
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+
+function render(){
+  const y=view.getFullYear(), m=view.getMonth();
+  document.getElementById("monthTitle").textContent=y+"年 "+(m+1)+"月";
+  const first=new Date(y,m,1), last=new Date(y,m+1,0);
+  let out="";
+  for(let i=0;i<first.getDay();i++) out+='<div class="day blank"></div>';
+  const todayKey=k(new Date()), selectedKey=k(selected);
+  for(let d=1;d<=last.getDate();d++){
+    const dt=new Date(y,m,d), key=dtKey(dt), list=bookings(key), n=people(list), off=isOff(dt);
+    const cls="day"+(key===todayKey?" today":"")+(key===selectedKey?" selected":"");
+    let status, extra="";
+    const left=Math.max(0,2-Math.min(n,2));
+    if(off) status='<div class="status off">🔴 OFF</div>';
+    else if(left===0) status='<div class="status full">🔴 满</div>';
+    else if(left===1) status='<div class="status booked">🟡 还有 1 位</div>';
+    else status='<div class="status available">🟢 还有 2 位</div>';
+    if(list.length) extra='<div class="names">'+list.map(function(x){return esc(x.name)+" "+x.people+"人";}).join(" · ")+"</div>";
+    out+='<div class="'+cls+'" data-date="'+key+'"><div class="date">'+d+'</div>'+status+extra+'</div>';
+  }
+  document.getElementById("calendarGrid").innerHTML=out;
+  document.querySelectorAll(".day[data-date]").forEach(function(el){
+    el.addEventListener("click",function(){
+      const p=el.getAttribute("data-date").split("-").map(Number);
+      selected=new Date(p[0],p[1]-1,p[2]);
+      render();
+    });
+  });
+  renderDetail();
+}
+function dtKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+
+function renderDetail(){
+  const key=dtKey(selected), list=bookings(key), n=people(list), off=isOff(selected), left=Math.max(0,2-Math.min(n,2));
+  let h='<div class="detailtop"><h2>📅 '+selected.getDate()+"/"+(selected.getMonth()+1)+' · 星期'+["日","一","二","三","四","五","六"][selected.getDay()]+'</h2></div>';
+  h+=off?'<div class="notice">🔴 <b>OFF DAY</b> · 今天不载乘客</div>':'<div class="notice">🟢 今天可以预约 · 固定 2 位，可再加 2 位</div>';
+  h+='<div class="summary"><div class="sum"><b>'+(!off?Math.min(n,2):0)+'</b>已加乘客</div><div class="sum"><b>'+(!off?left:0)+'</b>剩余位置</div><div class="sum"><b>2</b>可加人数</div></div>';
+  h+='<div class="tools">';
+  h+=off?'<button class="green" id="restoreBtn">🟢 恢复可预约</button>':'<button class="red" id="offBtn">🔴 设今天 OFF</button>';
+  h+='<button id="fridayBtn">⚙️ 星期五自动 OFF：'+(state.fridayOff?"开":"关")+'</button>';
+  if(!off) h+='<button class="pink" id="addBtn">＋ 新增预约</button>';
+  h+='</div>';
+  if(!list.length) h+='<div class="empty">这一天还没有额外预约</div>';
+  list.forEach(function(x){
+    h+='<div class="booking"><div><b>👤 '+esc(x.name)+' · '+x.people+' 人</b><div class="muted">📍 '+esc(x.from)+' → '+esc(x.to)+'<br>💰 S$'+Number(x.fee||0).toFixed(2)+'　'+(x.paid==="paid"?"💚 已付款":"🟡 待付款")+(x.note?"<br>📝 "+esc(x.note):"")+'</div></div><div class="actions"><button class="editBtn" data-id="'+esc(x.id)+'">✏️ 编辑</button><button class="red deleteBtn" data-id="'+esc(x.id)+'">🗑️ 删除</button></div></div>';
+  });
+  document.getElementById("detail").innerHTML=h;
+
+  const add=document.getElementById("addBtn");
+  if(add) add.onclick=function(){openForm(null);};
+  const offButton=document.getElementById("offBtn");
+  if(offButton) offButton.onclick=function(){state.overrides[key]=true;save();render();};
+  const restore=document.getElementById("restoreBtn");
+  if(restore) restore.onclick=function(){state.overrides[key]=false;save();render();};
+  document.getElementById("fridayBtn").onclick=function(){state.fridayOff=!state.fridayOff;save();render();};
+
+  document.querySelectorAll(".editBtn").forEach(function(btn){
+    btn.onclick=function(){openForm(btn.getAttribute("data-id"));};
+  });
+  document.querySelectorAll(".deleteBtn").forEach(function(btn){
+    btn.onclick=function(){
+      const id=btn.getAttribute("data-id");
+      state.bookings[key]=bookings(key).filter(function(x){return String(x.id)!==String(id);});
+      save();
+      render();
+    };
+  });
+}
+
+function openForm(id){
+  editingId=id===null?null:String(id);
+  let item=null;
+  if(editingId!==null){
+    item=bookings(dtKey(selected)).find(function(x){return String(x.id)===editingId;});
+    if(!item){alert("找不到这笔预约。");return;}
+  }
+  document.getElementById("formTitle").textContent=editingId===null?"新增预约":"编辑预约";
+  document.getElementById("fName").value=item?item.name:"";
+  document.getElementById("fPeople").value=item?item.people:1;
+  document.getElementById("fFrom").value=item?item.from:"Kranji MRT";
+  document.getElementById("fTo").value=item?item.to:"";
+  document.getElementById("fFee").value=item?item.fee:12;
+  document.getElementById("fPaid").value=item?item.paid:"unpaid";
+  document.getElementById("fNote").value=item?item.note:"";
+  document.getElementById("modal").classList.add("show");
+}
+function closeForm(){document.getElementById("modal").classList.remove("show");editingId=null;}
+
+document.getElementById("save").onclick=function(){
+  if(isOff(selected)){alert("今天是 OFF，不能预约。");return;}
+  const key=dtKey(selected), list=bookings(key);
+  const name=document.getElementById("fName").value.trim();
+  const p=Number(document.getElementById("fPeople").value);
+  const from=document.getElementById("fFrom").value.trim();
+  const to=document.getElementById("fTo").value.trim();
+  if(!name||!from||!to){alert("请填写顾客名字、上车点、下车点。");return;}
+  if(!Number.isInteger(p)||p<1||p>2){alert("额外预约人数只能 1-2 人。");return;}
+  let used=people(list.filter(function(x){return editingId===null || String(x.id)!==String(editingId);}));
+  if(used+p>2){alert("今天只剩 "+Math.max(0,2-used)+" 位。");return;}
+  const item={
+    id:editingId===null?("id-"+Date.now()):editingId,
+    name:name,people:p,from:from,to:to,
+    fee:document.getElementById("fFee").value,
+    paid:document.getElementById("fPaid").value,
+    note:document.getElementById("fNote").value.trim()
+  };
+  if(editingId===null){
+    list.push(item);
+    state.bookings[key]=list;
+  }else{
+    const index=list.findIndex(function(x){return String(x.id)===String(editingId);});
+    if(index<0){alert("找不到原预约。");return;}
+    list[index]=item;
+    state.bookings[key]=list;
+  }
+  save();
+  closeForm();
+  render();
+};
+
+document.getElementById("cancel").onclick=closeForm;
+document.getElementById("modal").onclick=function(e){if(e.target.id==="modal")closeForm();};
+document.getElementById("prev").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()-1,1);render();};
+document.getElementById("next").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()+1,1);render();};
+document.getElementById("today").onclick=function(){const t=new Date();view=new Date(t.getFullYear(),t.getMonth(),1);selected=t;render();};
+
+load();
+render();
+})();
+</script>
+</body>
+</html>
